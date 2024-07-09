@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomerService } from '../../services/customer.service';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-cart',
@@ -30,15 +31,36 @@ export class CartComponent {
     this.getCart();
   }
 
-  applyCoupon(){
-    this.customerService.applyCoupon(this.couponForm.get(['code']))!.subscribe(
-      res =>{
-        this.snackBar.open('Coupon Applied Successfully', 'Close', {duration:5000});
+  // applyCoupon(){
+  //   this.customerService.applyCoupon(this.couponForm.get(['code']))!.subscribe(
+  //     (res) =>{
+  //       this.snackBar.open('Coupon Applied Successfully', 'Close', {duration:5000});
+  //       this.getCart();
+  //     }, (error) =>{
+  //       this.snackBar.open(error.error, 'Close', {duration:5000});
+  //     }
+  //   )
+  // }
+
+  applyCoupon() {
+    if (this.couponForm.invalid) {
+      this.snackBar.open('Please enter a valid coupon code', 'Close', { duration: 5000 });
+      return;
+    }
+
+    const couponCode = this.couponForm.get('code')?.value;
+
+    this.customerService.applyCoupon(couponCode).pipe(
+      catchError((error) => {
+        this.snackBar.open(error.error || 'An error occurred', 'Close', { duration: 5000 });
+        return of(null); // Returns a safe observable to complete the subscription
+      })
+    ).subscribe((res) => {
+      if (res) {
+        this.snackBar.open('Coupon Applied Successfully', 'Close', { duration: 5000 });
         this.getCart();
-      }, error =>{
-        this.snackBar.open(error.error, 'Close', {duration:5000});
       }
-    )
+    });
   }
 
   getCart(){
@@ -50,5 +72,23 @@ export class CartComponent {
         this.cartItems.push(element);
       });
     })
+  }
+
+  increaseQuantity(productId: any){
+    this.customerService.increaseProductQuantity(productId).subscribe(
+      res =>{
+        this.snackBar.open('Product quantity increased', 'Close', {duration: 5000});
+        this.getCart();
+      }
+    )
+  }
+
+  decreaseQuantity(productId: any){
+    this.customerService.decreaseProductQuantity(productId).subscribe(
+      res =>{
+        this.snackBar.open('Product quantity decreased', 'Close', {duration: 5000});
+        this.getCart();
+      }
+    )
   }
 }
